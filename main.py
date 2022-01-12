@@ -11,7 +11,7 @@ class Cleaned_list:
         self.header = header
         self.data = data
 
-    def get_header(self):
+    def get_data_for_header(self):
         listed_data = {}
         list_val = []
         header_data = {key: value for(
@@ -35,7 +35,7 @@ class Cleaned_list:
 
         self.data = {key: value for (key, value) in listed_data.items() if str(
             pd.Timestamp(value, tz='US/Pacific', unit='s'))[:15] in str(dates_list)}
-        #print(self.data)
+
         return self.data
         
 
@@ -44,10 +44,12 @@ class Analyze(Cleaned_list):
 
     def __init__(self, header: str, data: dict):
         super().__init__(header, data)
+        self.min_max = ()
+        self.max_volume = ()
+        self.decreased_days = 0
 
     def get_investment_days(self):
         datarows = self.data
-        print(datarows)
         it = iter(datarows)
         y = 0
         max_count = 0
@@ -66,27 +68,8 @@ class Analyze(Cleaned_list):
                     max_count = count
                     count = 0
             h = i
-            if  i == list(datarows.keys())[-1]:
-                key_of_min = y
-                min_day = datarows[key_of_min]
-                days_to_analyze = {key: value for (
-                    key, value) in datarows.items() if value > min_day}
-                print(days_to_analyze)
-                for k, v in days_to_analyze.items():
-                    if k > x:
-                        x = k
-                        
-        print(f"Maximum amount of days bitcoin's price was decreasing: {max_count}")
-        min_day = min_day.strftime('%d-%m-%y')
-        
-        if x<= y:
-            print("There are no good days to trade on those days") 
-        else:
-            max_day = datarows[x].strftime('%d-%m-%y') 
-            print("In case you have a time machine:")
-            print(f"Buy bitcoin on {min_day}. Its value on that day was {y:.2f} eur")
-            print(
-                f"{max_day} is a good day to sell the bitcoins you bought on {min_day}. then their value is {x:.2f} eur")
+        self.decreased_days = max_count
+        return self.decreased_days
 
     def get_max_volume(self):
         data = self.data
@@ -98,8 +81,8 @@ class Analyze(Cleaned_list):
                 day_of_max = data[max_volume]
    
         day_of_max = day_of_max.strftime('%d-%m-%y')
-        print(
-            f"The day when the trading volume was the highest is: {day_of_max}, when the volume was:{max_volume:.2f} eur")
+        self.max_volume = day_of_max, max_volume
+        return self.max_volume
     
     def get_max_prof(self):
         data = list(self.data.keys())
@@ -122,10 +105,45 @@ class Analyze(Cleaned_list):
                 max_prof = max(profit, max_prof)
                 min_price = min(min_price, data[i])
                 max_price = max(max_price, data[i])
-            print(f"Buy bitcoin on {self.data[key_of_min].strftime('%d-%m-%y')}, Its value on that day was:{key_of_min:.2f} eur.")
-            print(f"{self.data[key_of_max].strftime('%d-%m-%y')} is a good day to sell the bitcoins you bought, then their value is {key_of_max:.2f} eur. With one bitcoin you would earn {max_prof:.2f} eur")
-            return max_prof
 
+            self.min_max = self.data[key_of_max].strftime('%d-%m-%y'), key_of_max, self.data[key_of_min].strftime('%d-%m-%y'), key_of_min, max_prof
+            return self.min_max
+
+    def print_days(self):
+
+      
+        if len(self.min_max) == 0:
+            pass
+        else:
+            day_to_buy = self.min_max[2]
+            day_to_sell = self.min_max[0]
+            purchase_price = self.min_max[3]
+            selling_price = self.min_max[1]
+            profit = self.min_max[4]
+
+            if purchase_price == selling_price:
+                print("It is not worth selling or buying during this period")
+            else:
+                print(f"Buy bitcoins on {day_to_buy}. The value of Bitcoin that day was: {purchase_price}.")
+                print(f"{day_to_sell} is a good day to sell the bitcoins you bought, then their value is {selling_price}")
+                print(f"For one bitcoin, the profit would be {profit}")
+        
+    def print_max_volume(self):
+
+        if len(self.max_volume) == 0:
+            pass
+        else:
+            max_volume = self.max_volume[1]
+            max_volume_day = self.max_volume[0]
+            print(f"The day when the trading volume was the highest is: {max_volume_day}, when the volume was:{max_volume:.2f} eur")
+    
+    def print_decreasing_days(self):
+
+        if self.decreased_days == 0:
+            pass
+        else:
+            print(f"Maximum amount of days bitcoin's price was decreasing: {self.decreased_days}")
+        
 
 
 
@@ -143,15 +161,16 @@ r = r = requests.get(
 
 r = json.loads(r)
 
-#The old logic for investment days must be removed and the logic of falling days differentiated into its own function
 #The time zone also needs to be corrected
 prices = Cleaned_list('prices', r)
-price_d =prices.get_header()
+price_d =prices.get_data_for_header()
 invest_days = Analyze('prices', price_d)
 invest_days.get_investment_days()
 maxs = invest_days.get_max_prof()
 volumes = Cleaned_list('total_volumes', r)
-volumes_d = volumes.get_header()
+volumes_d = volumes.get_data_for_header()
 max_volumes = Analyze('total_volumes', volumes_d)
 max_volumes.get_max_volume()
+invest_days.print_days()
+invest_days.print_decreasing_days()
 
