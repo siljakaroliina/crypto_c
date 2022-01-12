@@ -3,6 +3,7 @@ import requests
 import json
 import pandas as pd
 import numpy as np
+import pytz
 
 class Cleaned_list:
 
@@ -31,10 +32,10 @@ class Cleaned_list:
 
         for i in range(len(dates_list)):
             x = int(str(dates_list[i])[:10])
-            dates_list[i] = pd.Timestamp(x, tz='US/Pacific',unit='s')
+            dates_list[i] = pd.Timestamp(x, unit='s')
 
         self.data = {key: value for (key, value) in listed_data.items() if str(
-            pd.Timestamp(value, tz='US/Pacific', unit='s'))[:15] in str(dates_list)}
+            pd.Timestamp(value, unit='s'))[:15] in str(dates_list)}
 
         return self.data
         
@@ -49,24 +50,26 @@ class Analyze(Cleaned_list):
         self.decreased_days = 0
 
     def get_investment_days(self):
+        
         datarows = self.data
         it = iter(datarows)
         y = 0
         max_count = 0
         count = 0
-        x = 0
         h = next(it)
-        min_day = ''
-        max_day = ''
+   
         for i in datarows.keys():
             if i < h:
                 y = i
                 h = i
                 count += 1
+            else:
+                count = 0
+
             
             if count > max_count:
                     max_count = count
-                    count = 0
+            
             h = i
         self.decreased_days = max_count
         return self.decreased_days
@@ -105,6 +108,9 @@ class Analyze(Cleaned_list):
                 max_prof = max(profit, max_prof)
                 min_price = min(min_price, data[i])
                 max_price = max(max_price, data[i])
+            if key_of_max == 0:
+                key_of_max = data[0]
+                key_of_min = data[-1]
 
             self.min_max = self.data[key_of_max].strftime('%d-%m-%y'), key_of_max, self.data[key_of_min].strftime('%d-%m-%y'), key_of_min, max_prof
             return self.min_max
@@ -120,13 +126,15 @@ class Analyze(Cleaned_list):
             purchase_price = self.min_max[3]
             selling_price = self.min_max[1]
             profit = self.min_max[4]
+            d_s =  pd.Timestamp(day_to_sell, unit = 's') 
+            d_b =  pd.Timestamp(day_to_buy, unit = 's')
 
-            if purchase_price == selling_price:
+            if d_b > d_s:
                 print("It is not worth selling or buying during this period")
             else:
-                print(f"Buy bitcoins on {day_to_buy}. The value of Bitcoin that day was: {purchase_price}.")
-                print(f"{day_to_sell} is a good day to sell the bitcoins you bought, then their value is {selling_price}")
-                print(f"For one bitcoin, the profit would be {profit}")
+                print(f"Buy bitcoins on {day_to_buy}. The value of Bitcoin that day was: {purchase_price:.2f}.")
+                print(f"{day_to_sell} is a good day to sell the bitcoins you bought, then their value is {selling_price:.2f}")
+                print(f"For one bitcoin, the profit would be {profit:.2f}")
         
     def print_max_volume(self):
 
@@ -146,22 +154,23 @@ class Analyze(Cleaned_list):
         
 
 
+timezone = pytz.timezone('US/Central')
 
-
-start_date = '06/01/2022'
-end_date = '12/01/2022'
-#start_date = input("Eneter the start date: ")
-start = datetime.datetime.strptime(start_date, "%d/%m/%Y").timestamp()
-
+start_date = '19/01/2020'
+end_date = '21/01/2020'
+#start_date = input("Enter the start date: ")
+start = datetime.datetime.strptime(start_date, "%d/%m/%Y").replace(tzinfo=pytz.UTC).timestamp()
+#print(start)
 #end_date = input("Enter the end date: ")
-end = datetime.datetime.strptime(end_date, "%d/%m/%Y").timestamp()
-
+#end = datetime.datetime.strptime(end_date, "%d/%m/%Y").timestamp()
+#print(end)
+end2 = datetime.datetime.strptime(end_date, "%d/%m/%Y").replace(hour = 1,tzinfo=pytz.UTC).timestamp()
+#print(end2)
 r = r = requests.get(
-    f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=eur&from={start}&to={end}").text
+    f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=eur&from={start}&to={end2}").text
 
 r = json.loads(r)
 
-#The time zone also needs to be corrected
 prices = Cleaned_list('prices', r)
 price_d =prices.get_data_for_header()
 invest_days = Analyze('prices', price_d)
