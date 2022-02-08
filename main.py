@@ -132,6 +132,7 @@ class Analyze(Cleaned_list):
             if d_b > d_s:
                 print("It is not worth selling or buying during this period")
             else:
+                print("In case you have a time machine:")
                 print(f"Buy bitcoins on {day_to_buy}. The value of Bitcoin that day was: {purchase_price:.2f}.")
                 print(f"{day_to_sell} is a good day to sell the bitcoins you bought, then their value is {selling_price:.2f}")
                 print(f"For one bitcoin, the profit would be {profit:.2f}")
